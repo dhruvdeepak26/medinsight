@@ -43,13 +43,35 @@ export default async function handler(req, res) {
   try {
     const stream = client.messages.stream({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system:
-        'You are a knowledgeable health advisor. Provide clear, well-structured health reports based on the metrics given. Always include a brief disclaimer that your analysis is for informational purposes only and is not a substitute for professional medical advice.',
+      max_tokens: 1500,
+      system: `You are a health analysis assistant. Analyze the provided health metrics and return ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON. Use this exact schema:
+{
+  "overall": {
+    "status": "excellent|good|fair|poor",
+    "label": "e.g. Good Health",
+    "summary": "2-3 sentence overall assessment"
+  },
+  "sections": [
+    {
+      "name": "Demographics|Cardiovascular|Lifestyle|Blood Panel",
+      "metrics": [
+        {
+          "name": "metric name",
+          "value": "value with unit",
+          "status": "normal|warning|critical",
+          "range": "normal range string",
+          "note": "brief 1-sentence clinical note"
+        }
+      ]
+    }
+  ],
+  "recommendations": ["up to 5 concise actionable recommendations"]
+}
+Only include sections and metrics for which data was provided. Keep notes under 15 words.`,
       messages: [
         {
           role: 'user',
-          content: `Please provide a comprehensive health report for the following metrics:\n\n${metricLines.join('\n')}\n\nInclude: an overall health assessment, key observations for each metric, any concerning patterns, and practical lifestyle recommendations. Format with clear sections.`,
+          content: `Analyze these health metrics and return the JSON report:\n\n${metricLines.join('\n')}`,
         },
       ],
     })

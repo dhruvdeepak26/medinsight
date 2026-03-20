@@ -1,18 +1,118 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import './Analyze.css'
 
-function renderMarkdown(text) {
-  return text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/^## (.+)$/gm, '<h2 class="ai-h2">$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3 class="ai-h3">$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
-    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
-    .replace(/\n\n+/g, '<br><br>')
-    .replace(/(?<!>)\n(?!<)/g, '<br>')
+const SECTION_ICONS = {
+  'Demographics':   '👤',
+  'Cardiovascular': '🫀',
+  'Lifestyle':      '🏃',
+  'Blood Panel':    '🔬',
+}
+
+const OVERALL_META = {
+  excellent: { emoji: '✅', cls: 'ok' },
+  good:      { emoji: '✅', cls: 'ok' },
+  fair:      { emoji: '⚠️', cls: 'warn' },
+  poor:      { emoji: '❌', cls: 'danger' },
+}
+
+const METRIC_META = {
+  normal:   { emoji: '✅', label: 'Normal',   cls: 'ok' },
+  warning:  { emoji: '⚠️', label: 'Warning',  cls: 'warn' },
+  critical: { emoji: '❌', label: 'Critical', cls: 'danger' },
+}
+
+function AiReportContent({ data }) {
+  const overall = OVERALL_META[data.overall?.status] ?? OVERALL_META.fair
+
+  return (
+    <div className="report">
+      {/* Overall status banner */}
+      <div className={`report__overall report__overall--${overall.cls}`}>
+        <span className="report__overall-emoji">{overall.emoji}</span>
+        <div className="report__overall-body">
+          <div className="report__overall-label">{data.overall?.label ?? 'Health Assessment'}</div>
+          <p className="report__overall-summary">{data.overall?.summary}</p>
+        </div>
+      </div>
+
+      {/* Per-section metric tables */}
+      {data.sections?.map(section => {
+        const icon = SECTION_ICONS[section.name] ?? '📋'
+        return (
+          <div key={section.name} className="report__section">
+            <div className="report__section-header">
+              <span className="report__section-icon">{icon}</span>
+              <h3 className="report__section-title">{section.name}</h3>
+            </div>
+
+            <div className="report__table-wrap">
+              <table className="report__table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                    <th>Normal Range</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.metrics?.map(metric => {
+                    const m = METRIC_META[metric.status] ?? METRIC_META.normal
+                    return (
+                      <tr key={metric.name}>
+                        <td className="report__metric-name">{metric.name}</td>
+                        <td className="report__metric-value"><strong>{metric.value}</strong></td>
+                        <td>
+                          <span className={`report__badge report__badge--${m.cls}`}>
+                            {m.emoji} {m.label}
+                          </span>
+                        </td>
+                        <td className="report__range">{metric.range || '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {section.metrics?.some(m => m.note) && (
+              <div className="report__notes">
+                {section.metrics.filter(m => m.note).map(metric => {
+                  const m = METRIC_META[metric.status] ?? METRIC_META.normal
+                  return (
+                    <div key={metric.name} className={`report__note report__note--${m.cls}`}>
+                      <span className="report__note-metric">{metric.name}:</span> {metric.note}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Recommendations */}
+      {data.recommendations?.length > 0 && (
+        <div className="report__recommendations">
+          <div className="report__rec-header">
+            <span>💡</span>
+            <h3>Recommendations</h3>
+          </div>
+          <ol className="report__rec-list">
+            {data.recommendations.map((rec, i) => (
+              <li key={i} className="report__rec-item">
+                <span className="report__rec-num">{i + 1}</span>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  )
 }
 
 const SECTIONS = [
@@ -172,10 +272,12 @@ const STATUS_ICON = {
 
 export default function Analyze() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [form, setForm] = useState({})
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [aiReport, setAiReport] = useState('')
+  const [aiReportData, setAiReportData] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
@@ -195,14 +297,21 @@ export default function Analyze() {
     const formWithBmi = calculatedBmi ? { ...form, bmi: calculatedBmi } : form
     const insights = generateInsights(formWithBmi)
     const score = computeScore(insights)
-    const entry = { date: new Date().toISOString(), data: formWithBmi, insights, score }
 
-    const existing = JSON.parse(localStorage.getItem('medinsight_history') || '[]')
-    existing.push(entry)
-    localStorage.setItem('medinsight_history', JSON.stringify(existing))
+    // Save to Supabase only when logged in
+    let savedId = null
+    if (user) {
+      const { data: row, error } = await supabase
+        .from('analyses')
+        .insert({ user_id: user.id, metrics: { ...formWithBmi, insights }, score })
+        .select('id')
+        .single()
+      if (!error && row) savedId = row.id
+    }
 
     // Set aiLoading before results so the AI section renders immediately
     setAiLoading(true)
+    setAiReportData(null)
     setResults({ insights, score })
     setLoading(false)
 
@@ -217,10 +326,23 @@ export default function Analyze() {
       if (response.ok) {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
+        let accumulated = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          setAiReport(prev => prev + decoder.decode(value, { stream: true }))
+          accumulated += decoder.decode(value, { stream: true })
+          setAiReport(accumulated)
+        }
+        // Parse the completed JSON response
+        try {
+          const cleaned = accumulated.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+          setAiReportData(JSON.parse(cleaned))
+        } catch {
+          // fallback — raw text will render as plain message
+        }
+        // Persist ai_report to the saved row
+        if (user && savedId && accumulated) {
+          await supabase.from('analyses').update({ ai_report: accumulated }).eq('id', savedId)
         }
       }
     } catch (err) {
@@ -369,6 +491,17 @@ export default function Analyze() {
                   </div>
                 </div>
 
+                {/* Anon save notice */}
+                {!user && (
+                  <div className="analyze__anon-notice">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+                      <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Results are not saved.{' '}
+                    <a href="/login" className="analyze__anon-link">Sign in</a> to track your history.
+                  </div>
+                )}
+
                 {/* Disclaimer */}
                 <div className="analyze__disclaimer">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1, color: 'var(--accent)' }}>
@@ -419,20 +552,26 @@ export default function Analyze() {
           <div className="card analyze__ai-report">
             <div className="analyze__ai-header">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <span>AI Health Report</span>
               {aiLoading && <span className="analyze__spinner analyze__spinner--sm" aria-hidden="true" />}
             </div>
-            <div
-              className="analyze__ai-content"
-              dangerouslySetInnerHTML={{
-                __html: renderMarkdown(
-                  aiReport ||
-                  (aiLoading ? 'Generating your personalized report…' : 'AI report unavailable.')
-                )
-              }}
-            />
+
+            {aiLoading ? (
+              <div className="report__generating">
+                <div className="report__generating-dots">
+                  <span /><span /><span />
+                </div>
+                <p>Generating your personalized health report…</p>
+              </div>
+            ) : aiReportData ? (
+              <AiReportContent data={aiReportData} />
+            ) : (
+              <p className="report__fallback">
+                {aiReport || 'AI report unavailable.'}
+              </p>
+            )}
           </div>
         )}
 

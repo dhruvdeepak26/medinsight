@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
 
 const STAT_CARDS = [
@@ -46,13 +48,35 @@ function getScoreLabel(score) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth()
   const [history, setHistory] = useState([])
+  const [loadingData, setLoadingData] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('medinsight_history')
-    if (saved) setHistory(JSON.parse(saved))
-  }, [])
+    if (!user) return
 
+    async function load() {
+      setLoadingData(true)
+      setFetchError(null)
+      const { data, error } = await supabase
+        .from('analyses')
+        .select('id, created_at, metrics, score, ai_report')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        setFetchError('Failed to load analyses. Please try again.')
+      } else {
+        setHistory(data ?? [])
+      }
+      setLoadingData(false)
+    }
+
+    load()
+  }, [user])
+
+  // latest entry is last in ascending order
   const latest = history[history.length - 1]
 
   return (
@@ -72,7 +96,19 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {history.length === 0 ? (
+        {loadingData ? (
+          <div className="dashboard__loading">
+            <div className="dashboard__loading-spinner" />
+            <p>Loading your analyses…</p>
+          </div>
+        ) : fetchError ? (
+          <div className="dashboard__error">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            {fetchError}
+          </div>
+        ) : history.length === 0 ? (
           <div className="dashboard__empty">
             <div className="dashboard__empty-icon">
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
@@ -88,7 +124,7 @@ export default function Dashboard() {
             {/* Stat cards */}
             <div className="dashboard__stats-grid">
               {STAT_CARDS.map(({ label, key, unit, icon }) => {
-                const val = latest?.data?.[key]
+                const val = latest?.metrics?.[key]
                 return (
                   <div key={key} className="card dashboard__stat-card">
                     <div className="dashboard__stat-top">
@@ -131,11 +167,12 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...history].reverse().map((entry, i) => {
+                    {[...history].reverse().map((entry) => {
                       const status = getScoreStatus(entry.score)
+                      const insightsCount = entry.metrics?.insights?.length ?? 0
                       return (
-                        <tr key={i}>
-                          <td className="dashboard__td-muted">{formatDate(entry.date)}</td>
+                        <tr key={entry.id}>
+                          <td className="dashboard__td-muted">{formatDate(entry.created_at)}</td>
                           <td>
                             <div className="dashboard__score-cell">
                               <span className={`dashboard__score-num dashboard__score--${status}`}>
@@ -144,13 +181,13 @@ export default function Dashboard() {
                               <span className="dashboard__score-sublabel">{getScoreLabel(entry.score)}</span>
                             </div>
                           </td>
-                          <td>{entry.data?.bmi || '—'}</td>
-                          <td>{entry.data?.heartRate ? `${entry.data.heartRate} bpm` : '—'}</td>
-                          <td>{entry.data?.bloodPressure || '—'}</td>
-                          <td>{entry.data?.glucose ? `${entry.data.glucose} mg/dL` : '—'}</td>
+                          <td>{entry.metrics?.bmi || '—'}</td>
+                          <td>{entry.metrics?.heartRate ? `${entry.metrics.heartRate} bpm` : '—'}</td>
+                          <td>{entry.metrics?.bloodPressure || '—'}</td>
+                          <td>{entry.metrics?.glucose ? `${entry.metrics.glucose} mg/dL` : '—'}</td>
                           <td>
                             <span className={`badge badge-${status}`}>
-                              {entry.insights?.length ?? 0} findings
+                              {insightsCount} finding{insightsCount !== 1 ? 's' : ''}
                             </span>
                           </td>
                         </tr>
