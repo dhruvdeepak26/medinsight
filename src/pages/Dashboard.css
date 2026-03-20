@@ -1,0 +1,220 @@
+.dashboard {
+  padding-top: calc(var(--nav-h) + 48px);
+  padding-bottom: 80px;
+}
+
+.dashboard__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.dashboard__title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+
+.dashboard__sub {
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+/* Empty state */
+.dashboard__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 80px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.dashboard__empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  background: var(--accent-10);
+  border: 1px solid var(--border-accent);
+  border-radius: 50%;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.dashboard__empty h2 {
+  font-size: 22px;
+}
+
+.dashboard__empty p {
+  color: var(--text-2);
+  font-size: 15px;
+  margin-bottom: 8px;
+  max-width: 340px;
+}
+
+/* Stat cards */
+.dashboard__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.dashboard__stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard__stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard__stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.dashboard__stat-icon {
+  color: var(--accent);
+  opacity: 0.5;
+}
+
+.dashboard__stat-val {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.dashboard__stat-num {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dashboard__stat-unit {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.dashboard__stat-na {
+  font-size: 24px;
+  color: var(--text-3);
+  font-family: var(--font-heading);
+}
+
+.dashboard__stat-footer {
+  font-size: 12px;
+  color: var(--text-3);
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+/* History */
+.dashboard__history {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.dashboard__history-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard__history-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dashboard__table-wrap {
+  overflow-x: auto;
+}
+
+.dashboard__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.dashboard__table th {
+  padding: 12px 20px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: rgba(255,255,255,0.02);
+}
+
+.dashboard__table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.dashboard__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dashboard__table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dashboard__td-muted {
+  white-space: nowrap;
+  color: var(--text-2) !important;
+  font-size: 13px !important;
+}
+
+.dashboard__score-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dashboard__score-num {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.dashboard__score--ok { color: var(--accent); }
+.dashboard__score--warn { color: #ffbe32; }
+.dashboard__score--danger { color: #ff6060; }
+
+.dashboard__score-sublabel {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+@media (max-width: 900px) {
+  .dashboard__stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .dashboard__stats-grid { grid-template-columns: 1fr; }
+}
