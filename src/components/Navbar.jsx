@@ -1,4 +1,5 @@
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import './Navbar.css'
 
 const NAV_LINKS = [
@@ -8,6 +9,14 @@ const NAV_LINKS = [
 ]
 
 export default function Navbar() {
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/')
+  }
+
   return (
     <nav className="navbar">
       <div className="navbar__inner container">
@@ -20,23 +29,39 @@ export default function Navbar() {
           Med<span className="accent">Insight</span>
         </Link>
 
-        <div className="navbar__links">
-          {NAV_LINKS.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `navbar__link${isActive ? ' navbar__link--active' : ''}`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
-        </div>
+        {user && (
+          <div className="navbar__links">
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `navbar__link${isActive ? ' navbar__link--active' : ''}`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
+        )}
 
-        <Link to="/analyze" className="btn btn-primary navbar__cta">
-          New Analysis
-        </Link>
+        <div className="navbar__actions">
+          {user ? (
+            <>
+              <span className="navbar__email">{user.email}</span>
+              <button className="btn btn-ghost navbar__signout" onClick={handleSignOut}>
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="navbar__link">Sign In</Link>
+              <Link to="/signup" className="btn btn-primary navbar__cta">
+                Get Started
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   )
