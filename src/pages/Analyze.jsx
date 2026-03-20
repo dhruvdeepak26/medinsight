@@ -383,26 +383,6 @@ export default function Analyze() {
                   </div>
                 )}
 
-                {/* AI Report */}
-                <div className="card analyze__ai-report">
-                  <div className="analyze__ai-header">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                    <span>AI Health Report</span>
-                    {aiLoading && <span className="analyze__spinner analyze__spinner--sm" aria-hidden="true" />}
-                  </div>
-                  <div
-                    className="analyze__ai-content"
-                    dangerouslySetInnerHTML={{
-                      __html: renderMarkdown(
-                        aiReport ||
-                        (aiLoading ? 'Generating your personalized report…' : 'AI report unavailable.')
-                      )
-                    }}
-                  />
-                </div>
-
                 <button
                   className="btn btn-ghost"
                   style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
@@ -415,6 +395,29 @@ export default function Analyze() {
           </div>
 
         </div>
+
+        {/* ─── AI Report (full width) ─── */}
+        {results && (
+          <div className="card analyze__ai-report">
+            <div className="analyze__ai-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>AI Health Report</span>
+              {aiLoading && <span className="analyze__spinner analyze__spinner--sm" aria-hidden="true" />}
+            </div>
+            <div
+              className="analyze__ai-content"
+              dangerouslySetInnerHTML={{
+                __html: renderMarkdown(
+                  aiReport ||
+                  (aiLoading ? 'Generating your personalized report…' : 'AI report unavailable.')
+                )
+              }}
+            />
+          </div>
+        )}
+
       </div>
     </div>
   )
