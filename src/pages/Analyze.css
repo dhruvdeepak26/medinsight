@@ -89,6 +89,12 @@
   padding-right: 58px;
 }
 
+.analyze__input--computed {
+  color: var(--text-2);
+  cursor: default;
+  background: var(--surface-2, rgba(255,255,255,0.04));
+}
+
 .analyze__submit {
   width: 100%;
   justify-content: center;

@@ -24,7 +24,7 @@ const SECTIONS = [
       { key: 'age', label: 'Age', placeholder: 'e.g. 32', unit: 'yrs', type: 'number' },
       { key: 'weight', label: 'Weight', placeholder: 'e.g. 72', unit: 'kg', type: 'number' },
       { key: 'height', label: 'Height', placeholder: 'e.g. 175', unit: 'cm', type: 'number' },
-      { key: 'bmi', label: 'BMI', placeholder: 'e.g. 23.5', unit: 'kg/m²', type: 'number' },
+      { key: 'bmi', label: 'BMI', unit: 'kg/m²', computed: true },
     ],
   },
   {
@@ -180,14 +180,22 @@ export default function Analyze() {
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
+  const calculatedBmi = (() => {
+    const w = parseFloat(form.weight)
+    const h = parseFloat(form.height)
+    if (!w || !h || h <= 0) return null
+    return (w / Math.pow(h / 100, 2)).toFixed(1)
+  })()
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setAiReport('')
 
-    const insights = generateInsights(form)
+    const formWithBmi = calculatedBmi ? { ...form, bmi: calculatedBmi } : form
+    const insights = generateInsights(formWithBmi)
     const score = computeScore(insights)
-    const entry = { date: new Date().toISOString(), data: form, insights, score }
+    const entry = { date: new Date().toISOString(), data: formWithBmi, insights, score }
 
     const existing = JSON.parse(localStorage.getItem('medinsight_history') || '[]')
     existing.push(entry)
@@ -203,7 +211,7 @@ export default function Analyze() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(formWithBmi),
       })
 
       if (response.ok) {
@@ -263,15 +271,25 @@ export default function Analyze() {
                       <div key={field.key} className="form-group">
                         <label className="form-label">{field.label}</label>
                         <div className="analyze__input-wrap">
-                          <input
-                            className="form-input"
-                            type={field.type}
-                            placeholder={field.placeholder}
-                            value={form[field.key] || ''}
-                            onChange={e => update(field.key, e.target.value)}
-                            step={field.type === 'number' ? 'any' : undefined}
-                            min={field.type === 'number' ? '0' : undefined}
-                          />
+                          {field.computed ? (
+                            <input
+                              className="form-input analyze__input--computed"
+                              type="text"
+                              readOnly
+                              value={calculatedBmi ?? ''}
+                              placeholder="Calculated automatically"
+                            />
+                          ) : (
+                            <input
+                              className="form-input"
+                              type={field.type}
+                              placeholder={field.placeholder}
+                              value={form[field.key] || ''}
+                              onChange={e => update(field.key, e.target.value)}
+                              step={field.type === 'number' ? 'any' : undefined}
+                              min={field.type === 'number' ? '0' : undefined}
+                            />
+                          )}
                           <span className="analyze__unit">{field.unit}</span>
                         </div>
                       </div>
