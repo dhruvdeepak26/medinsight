@@ -3,7 +3,9 @@
     "allow": [
       "Skill(claude-api)",
       "Bash(npm install:*)",
-      "Bash(grep -rn .containers*{ /c/Users/Dhruv/medinsight/src/)"
+      "Bash(grep -rn .containers*{ /c/Users/Dhruv/medinsight/src/)",
+      "Bash(find /c/Users/Dhruv/medinsight -type f \\\\\\(-name *.sql -o -name *.ts -o -name *.d.ts -o -name schema* \\\\\\))",
+      "Bash(find /c/Users/Dhruv/medinsight -name README* -o -name SCHEMA* -o -name *.md)"
     ]
   }
 }

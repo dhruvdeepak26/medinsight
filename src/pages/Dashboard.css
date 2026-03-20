@@ -211,12 +211,131 @@
   color: var(--text-2);
 }
 
+/* Clickable rows */
+.dashboard__table-row--clickable {
+  cursor: pointer;
+}
+
+.dashboard__table-row--clickable:hover td {
+  background: rgba(0, 229, 180, 0.04) !important;
+}
+
+/* Actions column */
+.dashboard__td-actions {
+  width: 44px;
+  padding: 8px 12px !important;
+}
+
+/* Delete button */
+.dashboard__delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-3);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.dashboard__delete-btn:hover {
+  color: #ff6060;
+  background: rgba(255, 96, 96, 0.1);
+  border-color: rgba(255, 96, 96, 0.2);
+}
+
+.dashboard__delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dashboard__delete-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 96, 96, 0.3);
+  border-top-color: #ff6060;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: block;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(6, 8, 15, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px 40px;
+  overflow-y: auto;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modal__title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.modal__date {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.modal__close-btn {
+  flex-shrink: 0;
+}
+
+.modal__body {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.modal__section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 @media (max-width: 900px) {
   .dashboard__stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 480px) {
   .dashboard__stats-grid { grid-template-columns: 1fr; }
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal { border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92vh; }
 }
 
 /* Loading state */

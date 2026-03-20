@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
+import './Analyze.css'
 
 const STAT_CARDS = [
   { label: 'Heart Rate', key: 'heartRate', unit: 'bpm', icon: (
@@ -27,6 +28,44 @@ const STAT_CARDS = [
   )},
 ]
 
+const SECTION_ICONS = {
+  'Demographics':   '👤',
+  'Cardiovascular': '🫀',
+  'Lifestyle':      '🏃',
+  'Blood Panel':    '🔬',
+}
+
+const OVERALL_META = {
+  excellent: { emoji: '✅', cls: 'ok' },
+  good:      { emoji: '✅', cls: 'ok' },
+  fair:      { emoji: '⚠️', cls: 'warn' },
+  poor:      { emoji: '❌', cls: 'danger' },
+}
+
+const METRIC_META = {
+  normal:   { emoji: '✅', label: 'Normal',   cls: 'ok' },
+  warning:  { emoji: '⚠️', label: 'Warning',  cls: 'warn' },
+  critical: { emoji: '❌', label: 'Critical', cls: 'danger' },
+}
+
+const STATUS_ICON = {
+  ok: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  warn: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  danger: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+    </svg>
+  ),
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -47,11 +86,227 @@ function getScoreLabel(score) {
   return 'Needs Attention'
 }
 
+function AiReportContent({ data }) {
+  const overall = OVERALL_META[data.overall?.status] ?? OVERALL_META.fair
+
+  return (
+    <div className="report">
+      <div className={`report__overall report__overall--${overall.cls}`}>
+        <span className="report__overall-emoji">{overall.emoji}</span>
+        <div className="report__overall-body">
+          <div className="report__overall-label">{data.overall?.label ?? 'Health Assessment'}</div>
+          <p className="report__overall-summary">{data.overall?.summary}</p>
+        </div>
+      </div>
+
+      {data.sections?.map(section => {
+        const icon = SECTION_ICONS[section.name] ?? '📋'
+        return (
+          <div key={section.name} className="report__section">
+            <div className="report__section-header">
+              <span className="report__section-icon">{icon}</span>
+              <h3 className="report__section-title">{section.name}</h3>
+            </div>
+            <div className="report__table-wrap">
+              <table className="report__table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                    <th>Normal Range</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.metrics?.map(metric => {
+                    const m = METRIC_META[metric.status] ?? METRIC_META.normal
+                    return (
+                      <tr key={metric.name}>
+                        <td className="report__metric-name">{metric.name}</td>
+                        <td className="report__metric-value"><strong>{metric.value}</strong></td>
+                        <td>
+                          <span className={`report__badge report__badge--${m.cls}`}>
+                            {m.emoji} {m.label}
+                          </span>
+                        </td>
+                        <td className="report__range">{metric.range || '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {section.metrics?.some(m => m.note) && (
+              <div className="report__notes">
+                {section.metrics.filter(m => m.note).map(metric => {
+                  const m = METRIC_META[metric.status] ?? METRIC_META.normal
+                  return (
+                    <div key={metric.name} className={`report__note report__note--${m.cls}`}>
+                      <span className="report__note-metric">{metric.name}:</span> {metric.note}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {data.recommendations?.length > 0 && (
+        <div className="report__recommendations">
+          <div className="report__rec-header">
+            <span>💡</span>
+            <h3>Recommendations</h3>
+          </div>
+          <ol className="report__rec-list">
+            {data.recommendations.map((rec, i) => (
+              <li key={i} className="report__rec-item">
+                <span className="report__rec-num">{i + 1}</span>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AnalysisModal({ entry, onClose }) {
+  const score = entry.score
+  const scoreStatus = getScoreStatus(score)
+  const scoreLabel = getScoreLabel(score)
+  const insights = entry.metrics?.insights ?? []
+  const okCount = insights.filter(i => i.status === 'ok').length
+  const warnCount = insights.filter(i => i.status === 'warn').length
+  const dangerCount = insights.filter(i => i.status === 'danger').length
+
+  let aiReportData = null
+  if (entry.ai_report) {
+    try {
+      const cleaned = entry.ai_report
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim()
+      aiReportData = JSON.parse(cleaned)
+    } catch {}
+  }
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+
+        <div className="modal__header">
+          <div>
+            <h2 className="modal__title">Analysis Detail</h2>
+            <p className="modal__date">{formatDate(entry.created_at)}</p>
+          </div>
+          <button className="btn btn-ghost modal__close-btn" onClick={onClose}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+            Close
+          </button>
+        </div>
+
+        <div className="modal__body">
+
+          {/* Score card */}
+          <div className={`card analyze__score-card analyze__score-card--${scoreStatus}`}>
+            <div className="analyze__score-top">
+              <div>
+                <div className="analyze__score-eyebrow">Overall Health Score</div>
+                <div className={`analyze__score-num analyze__score--${scoreStatus}`}>{score}</div>
+                <div className="analyze__score-label">{scoreLabel}</div>
+              </div>
+              <div className="analyze__score-breakdown">
+                <div className="analyze__bd-item">
+                  <span className="analyze__bd-num analyze__bd--ok">{okCount}</span>
+                  <span className="analyze__bd-label">Normal</span>
+                </div>
+                <div className="analyze__bd-item">
+                  <span className="analyze__bd-num analyze__bd--warn">{warnCount}</span>
+                  <span className="analyze__bd-label">Warning</span>
+                </div>
+                <div className="analyze__bd-item">
+                  <span className="analyze__bd-num analyze__bd--danger">{dangerCount}</span>
+                  <span className="analyze__bd-label">Critical</span>
+                </div>
+              </div>
+            </div>
+            <div className="analyze__score-bar">
+              <div
+                className={`analyze__score-fill analyze__score-fill--${scoreStatus}`}
+                style={{ width: `${score}%` }}
+              />
+            </div>
+            <div className="analyze__bar-labels">
+              <span>0</span><span>50</span><span>100</span>
+            </div>
+          </div>
+
+          {/* Findings */}
+          {insights.length > 0 && (
+            <>
+              <h3 className="modal__section-title">Detailed Findings</h3>
+              <div className="analyze__insights">
+                {insights.map((insight, i) => (
+                  <div key={i} className={`analyze__insight analyze__insight--${insight.status}`}>
+                    <div className="analyze__insight-head">
+                      <div className={`analyze__insight-icon analyze__insight-icon--${insight.status}`}>
+                        {STATUS_ICON[insight.status]}
+                      </div>
+                      <span className="analyze__insight-metric">{insight.metric}</span>
+                      <span className={`badge badge-${insight.status}`}>{insight.value}</span>
+                    </div>
+                    <p className="analyze__insight-text">{insight.text}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* AI Report */}
+          {(aiReportData || entry.ai_report) && (
+            <div className="card analyze__ai-report">
+              <div className="analyze__ai-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>AI Health Report</span>
+              </div>
+              {aiReportData ? (
+                <AiReportContent data={aiReportData} />
+              ) : (
+                <p className="report__fallback">{entry.ai_report}</p>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const [history, setHistory] = useState([])
   const [loadingData, setLoadingData] = useState(true)
   const [fetchError, setFetchError] = useState(null)
+  const [selectedEntry, setSelectedEntry] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -76,7 +331,20 @@ export default function Dashboard() {
     load()
   }, [user])
 
-  // latest entry is last in ascending order
+  async function handleDelete(entry) {
+    if (!window.confirm('Are you sure you want to delete this analysis?')) return
+    setDeletingId(entry.id)
+    const { error } = await supabase
+      .from('analyses')
+      .delete()
+      .eq('id', entry.id)
+    if (!error) {
+      setHistory(prev => prev.filter(h => h.id !== entry.id))
+      if (selectedEntry?.id === entry.id) setSelectedEntry(null)
+    }
+    setDeletingId(null)
+  }
+
   const latest = history[history.length - 1]
 
   return (
@@ -164,6 +432,7 @@ export default function Dashboard() {
                       <th>Blood Pressure</th>
                       <th>Glucose</th>
                       <th>Findings</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -171,7 +440,11 @@ export default function Dashboard() {
                       const status = getScoreStatus(entry.score)
                       const insightsCount = entry.metrics?.insights?.length ?? 0
                       return (
-                        <tr key={entry.id}>
+                        <tr
+                          key={entry.id}
+                          className="dashboard__table-row--clickable"
+                          onClick={() => setSelectedEntry(entry)}
+                        >
                           <td className="dashboard__td-muted">{formatDate(entry.created_at)}</td>
                           <td>
                             <div className="dashboard__score-cell">
@@ -190,6 +463,26 @@ export default function Dashboard() {
                               {insightsCount} finding{insightsCount !== 1 ? 's' : ''}
                             </span>
                           </td>
+                          <td
+                            className="dashboard__td-actions"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <button
+                              className="dashboard__delete-btn"
+                              onClick={() => handleDelete(entry)}
+                              disabled={deletingId === entry.id}
+                              title="Delete analysis"
+                            >
+                              {deletingId === entry.id ? (
+                                <span className="dashboard__delete-spinner" />
+                              ) : (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                </svg>
+                              )}
+                            </button>
+                          </td>
                         </tr>
                       )
                     })}
@@ -200,6 +493,10 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {selectedEntry && (
+        <AnalysisModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      )}
     </div>
   )
 }
