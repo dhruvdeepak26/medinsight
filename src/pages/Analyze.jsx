@@ -2,6 +2,19 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Analyze.css'
 
+function renderMarkdown(text) {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/^## (.+)$/gm, '<h2 class="ai-h2">$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3 class="ai-h3">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/\n\n+/g, '<br><br>')
+    .replace(/(?<!>)\n(?!<)/g, '<br>')
+}
+
 const SECTIONS = [
   {
     id: 'basic',
@@ -180,11 +193,12 @@ export default function Analyze() {
     existing.push(entry)
     localStorage.setItem('medinsight_history', JSON.stringify(existing))
 
+    // Set aiLoading before results so the AI section renders immediately
+    setAiLoading(true)
     setResults({ insights, score })
     setLoading(false)
 
     // Stream AI health report from serverless function
-    setAiLoading(true)
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -370,20 +384,24 @@ export default function Analyze() {
                 )}
 
                 {/* AI Report */}
-                {(aiReport || aiLoading) && (
-                  <div className="card analyze__ai-report">
-                    <div className="analyze__ai-header">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                      <span>AI Health Report</span>
-                      {aiLoading && <span className="analyze__spinner analyze__spinner--sm" aria-hidden="true" />}
-                    </div>
-                    <div className="analyze__ai-content">
-                      {aiReport || 'Generating your personalized report…'}
-                    </div>
+                <div className="card analyze__ai-report">
+                  <div className="analyze__ai-header">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    <span>AI Health Report</span>
+                    {aiLoading && <span className="analyze__spinner analyze__spinner--sm" aria-hidden="true" />}
                   </div>
-                )}
+                  <div
+                    className="analyze__ai-content"
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdown(
+                        aiReport ||
+                        (aiLoading ? 'Generating your personalized report…' : 'AI report unavailable.')
+                      )
+                    }}
+                  />
+                </div>
 
                 <button
                   className="btn btn-ghost"

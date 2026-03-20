@@ -5,27 +5,35 @@
 }
 
 :root {
-  --bg:          #080b12;
-  --surface:     #0e1220;
-  --surface-2:   #141827;
-  --surface-3:   #1a2035;
-  --border:      rgba(255, 255, 255, 0.07);
-  --border-2:    rgba(255, 255, 255, 0.12);
-  --text:        #f0f4ff;
-  --text-2:      #8892a4;
-  --text-3:      #525d72;
-  --accent:      #00e5b4;
-  --accent-dim:  rgba(0, 229, 180, 0.12);
-  --accent-glow: rgba(0, 229, 180, 0.25);
-  --red:         #ff4d6a;
-  --red-dim:     rgba(255, 77, 106, 0.12);
-  --yellow:      #ffd166;
-  --yellow-dim:  rgba(255, 209, 102, 0.12);
-  --font-heading: 'Syne', system-ui, sans-serif;
-  --font-body:    'Instrument Sans', system-ui, sans-serif;
-  --radius:       12px;
-  --radius-lg:    20px;
-  --transition:   0.2s ease;
+  --bg:            #080b12;
+  --bg-2:          #06080f;
+  --surface:       #0e1220;
+  --surface-2:     #141827;
+  --surface-3:     #1a2035;
+  --border:        rgba(255, 255, 255, 0.07);
+  --border-2:      rgba(255, 255, 255, 0.12);
+  --text:          #f0f4ff;
+  --text-2:        #8892a4;
+  --text-3:        #525d72;
+  --accent:        #00e5b4;
+  --accent-dim:    rgba(0, 229, 180, 0.12);
+  --accent-glow:   rgba(0, 229, 180, 0.25);
+  --accent-5:      rgba(0, 229, 180, 0.05);
+  --accent-10:     rgba(0, 229, 180, 0.10);
+  --border-accent: rgba(0, 229, 180, 0.18);
+  --red:           #ff4d6a;
+  --red-dim:       rgba(255, 77, 106, 0.12);
+  --yellow:        #ffd166;
+  --yellow-dim:    rgba(255, 209, 102, 0.12);
+  --bg-card:       #0e1220;
+  --bg-card-hover: #141827;
+  --font-heading:  'Syne', system-ui, sans-serif;
+  --font-body:     'Instrument Sans', system-ui, sans-serif;
+  --radius:        12px;
+  --radius-sm:     8px;
+  --radius-lg:     20px;
+  --transition:    0.2s ease;
+  --nav-h:         64px;
 }
 
 html {
@@ -89,3 +97,135 @@ input, select, textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-2);
 }
+
+/* ─── Layout ─── */
+.page {
+  flex: 1;
+}
+
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+@media (max-width: 640px) {
+  .container { padding: 0 16px; }
+}
+
+/* ─── Card ─── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+
+/* ─── Buttons ─── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  border: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #07070f;
+}
+
+.btn-primary:hover { opacity: 0.88; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.btn-lg {
+  padding: 13px 26px;
+  font-size: 15px;
+}
+
+/* ─── Section tag ─── */
+.section-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--accent-10);
+  border: 1px solid var(--border-accent);
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ─── Badges ─── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.badge-ok     { background: rgba(0, 229, 180, 0.12); color: var(--accent); }
+.badge-warn   { background: rgba(255, 190, 50, 0.12); color: #ffbe32; }
+.badge-danger { background: rgba(255, 80, 80, 0.12);  color: #ff6060; }
+
+/* ─── Forms ─── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  transition: var(--transition);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.form-input:focus {
+  border-color: var(--border-accent);
+  background: var(--surface-3);
+  box-shadow: 0 0 0 3px var(--accent-5);
+}
+
+.form-input::placeholder { color: var(--text-3); }
+
+.form-input[type="number"]::-webkit-inner-spin-button,
+.form-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.form-input[type="number"] { -moz-appearance: textfield; }
