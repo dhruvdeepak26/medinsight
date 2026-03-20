@@ -162,13 +162,15 @@ export default function Analyze() {
   const [form, setForm] = useState({})
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [aiReport, setAiReport] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    await new Promise(r => setTimeout(r, 900))
+    setAiReport('')
 
     const insights = generateInsights(form)
     const score = computeScore(insights)
@@ -180,6 +182,30 @@ export default function Analyze() {
 
     setResults({ insights, score })
     setLoading(false)
+
+    // Stream AI health report from serverless function
+    setAiLoading(true)
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+
+      if (response.ok) {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          setAiReport(prev => prev + decoder.decode(value, { stream: true }))
+        }
+      }
+    } catch (err) {
+      console.error('AI report error:', err)
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const scoreStatus = results
@@ -340,6 +366,22 @@ export default function Analyze() {
                         <p className="analyze__insight-text">{insight.text}</p>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* AI Report */}
+                {(aiReport || aiLoading) && (
+                  <div className="card analyze__ai-report">
+                    <div className="analyze__ai-header">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      <span>AI Health Report</span>
+                      {aiLoading && <span className="analyze__spinner analyze__spinner--sm" aria-hidden="true" />}
+                    </div>
+                    <div className="analyze__ai-content">
+                      {aiReport || 'Generating your personalized report…'}
+                    </div>
                   </div>
                 )}
 
