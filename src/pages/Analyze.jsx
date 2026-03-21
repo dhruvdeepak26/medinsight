@@ -296,8 +296,9 @@ export default function Analyze() {
       .from('profiles')
       .select('date_of_birth')
       .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) { console.error('Profile fetch error:', error); return }
         if (data?.date_of_birth) {
           const age = calcAge(data.date_of_birth)
           setAgeFromProfile(age)

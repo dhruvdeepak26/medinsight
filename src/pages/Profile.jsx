@@ -25,6 +25,7 @@ export default function Profile() {
   const [fullName, setFullName] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [profileLoading, setProfileLoading] = useState(true)
   const [historyCount, setHistoryCount] = useState(0)
 
@@ -50,8 +51,9 @@ export default function Profile() {
       .from('profiles')
       .select('full_name, date_of_birth')
       .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) console.error('Profile fetch error:', error)
         if (data) {
           setFullName(data.full_name ?? '')
           setDateOfBirth(data.date_of_birth ?? '')
@@ -66,14 +68,34 @@ export default function Profile() {
 
   const handleSave = async (e) => {
     e.preventDefault()
-    // Save personal info to Supabase
-    if (user) {
-      await supabase.from('profiles').upsert({
-        id: user.id,
-        full_name: fullName,
-        date_of_birth: dateOfBirth || null,
-      }, { onConflict: 'id' })
+    setSaveError('')
+
+    // Get fresh user from Supabase auth to avoid stale context state
+    const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+    console.log('handleSave: currentUser =', currentUser, 'authError =', authError)
+
+    if (authError) {
+      console.error('Auth error during save:', authError)
+      setSaveError('Authentication error. Please sign in again.')
+      return
     }
+
+    if (currentUser) {
+      const payload = { id: currentUser.id, full_name: fullName || null, date_of_birth: dateOfBirth || null }
+      console.log('Upserting profile payload:', payload)
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(payload, { onConflict: 'id' })
+      console.log('Upsert result — data:', data, 'error:', error)
+      if (error) {
+        console.error('Profile save error:', error.message, error.details, error.hint, error.code)
+        setSaveError('Failed to save profile. Please try again.')
+        return
+      }
+    } else {
+      console.warn('handleSave: no authenticated user, skipping Supabase upsert')
+    }
+
     // Save preferences to localStorage
     localStorage.setItem('medinsight_profile', JSON.stringify(prefs))
     setSaved(true)
@@ -208,6 +230,10 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
+
+              {saveError && (
+                <p style={{ color: '#ff6060', fontSize: 13, marginBottom: 8 }}>{saveError}</p>
+              )}
 
               <button
                 type="submit"
