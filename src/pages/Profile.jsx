@@ -1,31 +1,81 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import './Profile.css'
 
-const DEFAULTS = {
-  name: '',
-  age: '',
+const PREF_DEFAULTS = {
   gender: '',
   units: 'metric',
   alerts: false,
   weeklyReports: true,
 }
 
+function calcAge(dob) {
+  const today = new Date()
+  const birth = new Date(dob)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
+
 export default function Profile() {
-  const [profile, setProfile] = useState(DEFAULTS)
+  const { user } = useAuth()
+  const [prefs, setPrefs] = useState(PREF_DEFAULTS)
+  const [fullName, setFullName] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [saved, setSaved] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true)
   const [historyCount, setHistoryCount] = useState(0)
 
   useEffect(() => {
     const stored = localStorage.getItem('medinsight_profile')
-    if (stored) setProfile({ ...DEFAULTS, ...JSON.parse(stored) })
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      setPrefs({ ...PREF_DEFAULTS, ...parsed })
+    }
     setHistoryCount(JSON.parse(localStorage.getItem('medinsight_history') || '[]').length)
-  }, [])
 
-  const update = (key, val) => setProfile(prev => ({ ...prev, [key]: val }))
+    // Flush any pending DOB stored during email-confirmation signup
+    const pendingDob = localStorage.getItem('medinsight_pending_dob')
+    if (pendingDob && user) {
+      supabase.from('profiles').upsert({ id: user.id, date_of_birth: pendingDob }, { onConflict: 'id' })
+        .then(() => localStorage.removeItem('medinsight_pending_dob'))
+    }
+  }, [user])
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    if (!user) { setProfileLoading(false); return }
+    supabase
+      .from('profiles')
+      .select('full_name, date_of_birth')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setFullName(data.full_name ?? '')
+          setDateOfBirth(data.date_of_birth ?? '')
+        }
+        setProfileLoading(false)
+      })
+  }, [user])
+
+  const updatePref = (key, val) => setPrefs(prev => ({ ...prev, [key]: val }))
+
+  const calculatedAge = dateOfBirth ? calcAge(dateOfBirth) : null
+
+  const handleSave = async (e) => {
     e.preventDefault()
-    localStorage.setItem('medinsight_profile', JSON.stringify(profile))
+    // Save personal info to Supabase
+    if (user) {
+      await supabase.from('profiles').upsert({
+        id: user.id,
+        full_name: fullName,
+        date_of_birth: dateOfBirth || null,
+      }, { onConflict: 'id' })
+    }
+    // Save preferences to localStorage
+    localStorage.setItem('medinsight_profile', JSON.stringify(prefs))
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }
@@ -63,48 +113,45 @@ export default function Profile() {
                     </svg>
                   </div>
                   <div>
-                    <div className="profile__avatar-name">{profile.name || 'Your Name'}</div>
+                    <div className="profile__avatar-name">{fullName || 'Your Name'}</div>
                     <div className="profile__avatar-sub">MedInsight User</div>
                   </div>
                 </div>
 
-                <div className="profile__fields">
-                  <div className="form-group">
-                    <label className="form-label">Full Name</label>
-                    <input
-                      className="form-input"
-                      type="text"
-                      placeholder="e.g. Alex Johnson"
-                      value={profile.name}
-                      onChange={e => update('name', e.target.value)}
-                    />
+                {profileLoading ? (
+                  <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Loading…</p>
+                ) : (
+                  <div className="profile__fields">
+                    <div className="form-group">
+                      <label className="form-label">Full Name</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="e.g. Alex Johnson"
+                        value={fullName}
+                        onChange={e => setFullName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        Date of Birth
+                        {calculatedAge !== null && (
+                          <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 400 }}>
+                            — Age: <strong style={{ color: 'var(--accent)' }}>{calculatedAge}</strong>
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        className="form-input"
+                        type="date"
+                        value={dateOfBirth}
+                        onChange={e => setDateOfBirth(e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Age</label>
-                    <input
-                      className="form-input"
-                      type="number"
-                      placeholder="e.g. 30"
-                      value={profile.age}
-                      onChange={e => update('age', e.target.value)}
-                      min="1"
-                      max="120"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Biological Sex</label>
-                    <select
-                      className="form-input"
-                      value={profile.gender}
-                      onChange={e => update('gender', e.target.value)}
-                    >
-                      <option value="">Prefer not to say</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Preferences */}
@@ -121,8 +168,8 @@ export default function Profile() {
                       <button
                         key={val}
                         type="button"
-                        className={`profile__toggle-btn${profile.units === val ? ' profile__toggle-btn--active' : ''}`}
-                        onClick={() => update('units', val)}
+                        className={`profile__toggle-btn${prefs.units === val ? ' profile__toggle-btn--active' : ''}`}
+                        onClick={() => updatePref('units', val)}
                       >
                         {label}
                       </button>
@@ -152,9 +199,9 @@ export default function Profile() {
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={profile[key]}
-                      className={`profile__switch${profile[key] ? ' profile__switch--on' : ''}`}
-                      onClick={() => update(key, !profile[key])}
+                      aria-checked={prefs[key]}
+                      className={`profile__switch${prefs[key] ? ' profile__switch--on' : ''}`}
+                      onClick={() => updatePref(key, !prefs[key])}
                     >
                       <span className="profile__switch-thumb" />
                     </button>

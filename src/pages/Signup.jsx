@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import './Auth.css'
 
 export default function Signup() {
@@ -8,6 +9,7 @@ export default function Signup() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [confirmation, setConfirmation] = useState(false)
@@ -21,9 +23,17 @@ export default function Signup() {
     if (err) {
       setError(err.message)
     } else if (data.user && !data.session) {
-      // Email confirmation required
+      // Email confirmation required — store DOB locally for after confirmation
+      if (dateOfBirth) localStorage.setItem('medinsight_pending_dob', dateOfBirth)
       setConfirmation(true)
     } else {
+      // Immediate session — create profile now
+      if (data.user && dateOfBirth) {
+        await supabase.from('profiles').insert({
+          id: data.user.id,
+          date_of_birth: dateOfBirth,
+        })
+      }
       navigate('/dashboard')
     }
   }
@@ -94,6 +104,18 @@ export default function Signup() {
               required
               minLength={6}
               autoComplete="new-password"
+            />
+          </div>
+
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="dob">Date of Birth</label>
+            <input
+              id="dob"
+              className="auth-input"
+              type="date"
+              value={dateOfBirth}
+              onChange={e => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
 

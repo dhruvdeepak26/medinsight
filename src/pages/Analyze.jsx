@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -159,6 +159,15 @@ const SECTIONS = [
   },
 ]
 
+function calcAge(dob) {
+  const today = new Date()
+  const birth = new Date(dob)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
+
 function generateInsights(data) {
   const insights = []
   const add = (metric, value, status, text) => insights.push({ metric, value, status, text })
@@ -274,11 +283,28 @@ export default function Analyze() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [form, setForm] = useState({})
+  const [ageFromProfile, setAgeFromProfile] = useState(null)
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [aiReport, setAiReport] = useState('')
   const [aiReportData, setAiReportData] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('profiles')
+      .select('date_of_birth')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.date_of_birth) {
+          const age = calcAge(data.date_of_birth)
+          setAgeFromProfile(age)
+          setForm(prev => ({ ...prev, age: String(age) }))
+        }
+      })
+  }, [user])
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
@@ -391,7 +417,14 @@ export default function Analyze() {
                   <div className="analyze__fields">
                     {section.fields.map(field => (
                       <div key={field.key} className="form-group">
-                        <label className="form-label">{field.label}</label>
+                        <label className="form-label">
+                          {field.label}
+                          {field.key === 'age' && ageFromProfile !== null && (
+                            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-3)', fontWeight: 400 }}>
+                              from date of birth
+                            </span>
+                          )}
+                        </label>
                         <div className="analyze__input-wrap">
                           {field.computed ? (
                             <input
@@ -400,6 +433,14 @@ export default function Analyze() {
                               readOnly
                               value={calculatedBmi ?? ''}
                               placeholder="Calculated automatically"
+                            />
+                          ) : field.key === 'age' && ageFromProfile !== null ? (
+                            <input
+                              className="form-input analyze__input--computed"
+                              type="text"
+                              readOnly
+                              value={ageFromProfile}
+                              title="Automatically calculated from your date of birth. Update it on your Profile page."
                             />
                           ) : (
                             <input
