@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
@@ -71,6 +75,100 @@ function formatDate(iso) {
     month: 'short', day: 'numeric', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
+}
+
+function formatChartDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function TrendTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const { score, fullDate } = payload[0].payload
+  return (
+    <div className="trend-tooltip">
+      <div className="trend-tooltip__score">{score}</div>
+      <div className="trend-tooltip__label">{getScoreLabel(score)}</div>
+      <div className="trend-tooltip__date">{fullDate}</div>
+    </div>
+  )
+}
+
+function HealthTrendChart({ history }) {
+  if (history.length < 2) {
+    return (
+      <div className="card trend-card">
+        <div className="trend-card__header">
+          <h2 className="trend-card__title">Health Score Trend</h2>
+        </div>
+        <div className="trend-empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 16l4-4 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <p>Run at least 2 analyses to see your trend</p>
+        </div>
+      </div>
+    )
+  }
+
+  const chartData = history.map(entry => ({
+    date: formatChartDate(entry.created_at),
+    fullDate: formatDate(entry.created_at),
+    score: entry.score,
+  }))
+
+  return (
+    <div className="card trend-card">
+      <div className="trend-card__header">
+        <h2 className="trend-card__title">Health Score Trend</h2>
+        <span className="trend-card__range">{chartData.length} analyses</span>
+      </div>
+      <div className="trend-chart-wrap">
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#00e5b4" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#00e5b4" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              vertical={false}
+              stroke="rgba(255,255,255,0.05)"
+              strokeDasharray="0"
+            />
+            <XAxis
+              dataKey="date"
+              tick={{ fill: '#8892a4', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              dy={8}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fill: '#8892a4', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              ticks={[0, 25, 50, 75, 100]}
+            />
+            <Tooltip
+              content={<TrendTooltip />}
+              cursor={{ stroke: 'rgba(0,229,180,0.2)', strokeWidth: 1 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke="#00e5b4"
+              strokeWidth={2}
+              fill="url(#trendGradient)"
+              dot={{ r: 4, fill: '#00e5b4', strokeWidth: 0 }}
+              activeDot={{ r: 6, fill: '#00e5b4', stroke: 'rgba(0,229,180,0.3)', strokeWidth: 4 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
 }
 
 function getScoreStatus(score) {
@@ -414,6 +512,9 @@ export default function Dashboard() {
                 )
               })}
             </div>
+
+            {/* Health trend chart */}
+            <HealthTrendChart history={history} />
 
             {/* History table */}
             <div className="dashboard__history">

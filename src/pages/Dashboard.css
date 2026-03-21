@@ -125,6 +125,87 @@
   padding-top: 10px;
 }
 
+/* Health Trend Chart */
+.trend-card {
+  margin-bottom: 24px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.trend-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trend-card__title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.trend-card__range {
+  font-size: 12px;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 3px 10px;
+}
+
+.trend-chart-wrap {
+  padding: 20px 8px 8px 8px;
+}
+
+.trend-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+.trend-empty svg {
+  opacity: 0.4;
+}
+
+/* Trend tooltip */
+.trend-tooltip {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 120px;
+  text-align: center;
+}
+
+.trend-tooltip__score {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 800;
+  color: #00e5b4;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.trend-tooltip__label {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+.trend-tooltip__date {
+  font-size: 11px;
+  color: var(--text-3);
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
 /* History */
 .dashboard__history {
   background: var(--bg-card);
